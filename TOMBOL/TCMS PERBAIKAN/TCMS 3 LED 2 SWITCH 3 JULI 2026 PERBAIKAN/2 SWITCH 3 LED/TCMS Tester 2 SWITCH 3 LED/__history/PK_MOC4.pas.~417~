@@ -1,0 +1,519 @@
+unit PK_MOC4;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
+  System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, CPort, Vcl.StdCtrls, Vcl.ExtCtrls,
+  System.Generics.Collections,
+
+  UBinaryPacketizer;
+
+const
+  HIGH_STATE: Byte = $01;
+  LOW_STATE: Byte = $00;
+
+  LED_ON: Byte = $01;
+  LED_OFF: Byte = $00;
+
+  BUTTON_PRESSED: Byte = $00;
+  BUTTON_NOT_PRESSED: Byte = $01;
+
+  ON_BUTTON_DOWN: Byte = $00;
+  ON_BUTTON_UP: Byte = $01;
+
+
+  NumberOfButton = 32;
+  BufferSize = 256;
+
+  LCN_CODE: byte = 200;
+  LSN_CODE: byte = 201;
+  LCA_CODE: byte = 202;
+  LSA_CODE: byte = 203;
+
+  BSN_CODE: byte = 204;
+
+  TComExceptionsString: array [0 .. 24] of string = ('CE_OpenFailed',
+    'CE_WriteFailed', 'CE_ReadFailed', 'CE_InvalidAsync', 'CE_PurgeFailed',
+    'CE_AsyncCheck', 'CE_SetStateFailed', 'CE_TimeoutsFailed',
+    'CE_SetupComFailed', 'CE_ClearComFailed', 'CE_ModemStatFailed',
+    'CE_EscapeComFailed', 'CE_TransmitFailed', 'CE_ConnChangeProp',
+    'CE_EnumPortsFailed', 'CE_StoreFailed', 'CE_LoadFailed', 'CE_RegFailed',
+    'CE_LedStateFailed', 'CE_ThreadCreated', 'CE_WaitFailed', 'CE_HasLink',
+    'CE_RegError', 'CEPortNotOpen', 'CE_PortDisconnected');
+
+type
+  TLEDStateArray = array [0 .. NumberOfButton - 1] of Boolean;
+  TLEDArray = array [0 .. NumberOfButton - 1] of TShape;
+  TButtonArray = array [0 .. NumberOfButton - 1] of TShape;
+  TTimerArray = array [0 .. NumberOfButton - 1] of TTimer;
+
+  TfrmPK_MOC4 = class(TForm)
+    btnConnect: TButton;
+    Log: TMemo;
+    btno01Off: TButton;
+    ComPort1: TComPort;
+    btn01On: TButton;
+    Panel1: TPanel;
+    GroupBox9: TGroupBox;
+    TmrGetMessage: TTimer;
+    edtCOMPort: TEdit;
+    lblPort: TLabel;
+    btn01: TGroupBox;
+    btn02: TGroupBox;
+    btn03: TGroupBox;
+    btn04: TGroupBox;
+    btn05: TGroupBox;
+    btn06: TGroupBox;
+    btn07: TGroupBox;
+    btn08: TGroupBox;
+    ShapeButton01: TShape;
+    ShapeButton02: TShape;
+    ShapeButton03: TShape;
+    ShapeButton04: TShape;
+    ShapeButton05: TShape;
+    ShapeButton06: TShape;
+    ShapeButton07: TShape;
+    ShapeButton08: TShape;
+    shapeLed02: TShape;
+    shapeLed01: TShape;
+    shapeLed03: TShape;
+    shapeLed04: TShape;
+    shapeLed05: TShape;
+    shapeLed06: TShape;
+    shapeLed07: TShape;
+    shapeLed08: TShape;
+    Timer1: TTimer;
+    Timer4: TTimer;
+    Timer5: TTimer;
+    Timer6: TTimer;
+    Timer7: TTimer;
+    Timer8: TTimer;
+    procedure btnConnectClick(Sender: TObject);
+    procedure btno01OffClick(Sender: TObject);
+    procedure btn01OnClick(Sender: TObject);
+    procedure ComPort1RxChar(Sender: TObject; Count: Integer);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure TmrGetMessageTimer(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure TimerTimer(Sender: TObject);
+  private
+
+    { Private declarations }
+    Packetizer: TBinaryPacketizer;
+
+    MessageQueue: TQueue<TBytes>;
+
+    ReceivedBuffer: TBytes;
+
+    isComPortConnected: Boolean;
+
+    LEDStateArray: TLEDStateArray;
+    LEDArray: TLEDArray;
+    ButtonArray: TButtonArray;
+
+    TimerArray: TTimerArray;
+
+    procedure ToggleComConnection;
+    function OpenComPort(APort: string): Boolean;
+    function CloseComPort: Boolean;
+
+    procedure Build_Send_Command(var Buff: TBytes; Code: byte; Number: byte;
+      State: Cardinal);
+
+    procedure DecodeArray(Input: Cardinal; var arr: TLEDStateArray; Len: byte);
+
+    procedure OnPacketReceivedHandler(Packet: TBytes);
+
+    procedure MapVisual;
+    procedure SetLEDState(Number: byte; State: Cardinal);
+    procedure SetLEDDisplay(Number: byte; State: Boolean);
+    procedure UpdateLEDDisplay;
+    procedure SetButtonState(Number: byte; State: byte);
+    procedure InitVisual;
+
+    procedure shapeLedMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+
+  public
+    { Public declarations }
+  end;
+
+var
+  frmPK_MOC4: TfrmPK_MOC4;
+
+implementation
+
+{$R *.dfm}
+
+function EncodeByte(b0: Byte; b1: Byte; b2: Byte; b3: Byte): Cardinal;
+begin
+  Result:= Cardinal((b3 shl 24) or (b2 shl 16) or (b1 shl 8) or b0);
+end;
+
+procedure ExtractByte(state: Cardinal; var b0: Byte; var b1: Byte; var b2: Byte; var b3: Byte);
+begin
+  b0 := (state and $FF);
+  b1 := (state and $FF00) shr 8;
+  b2 := (state and $FF0000) shr 16;
+  b3 := (state and $FF000000) shr 24;
+end;
+
+procedure TfrmPK_MOC4.Build_Send_Command(var Buff: TBytes; Code: byte;
+  Number: byte; State: Cardinal);
+var
+  Abytes: TBytes;
+  b0, b1, b2, b3: Byte;
+begin
+  SetLength(Abytes, 6);
+
+  ExtractByte(State, b0, b1, b2, b3);
+
+  Abytes[0] := Code;
+  Abytes[1] := Number;
+  Abytes[2] := b3;
+  Abytes[3] := b2;
+  Abytes[4] := b1;
+  Abytes[5] := b0;
+  Packetizer.WrapData(Abytes, Buff);
+end;
+
+procedure TfrmPK_MOC4.btnConnectClick(Sender: TObject);
+begin
+  ToggleComConnection;
+end;
+
+procedure TfrmPK_MOC4.btno01OffClick(Sender: TObject);
+var
+  Abytes: TBytes;
+begin
+  try
+    Build_Send_Command(Abytes, LCA_CODE, 255, LED_OFF);
+    ComPort1.Write(Abytes[0], Length(Abytes));
+  except
+    on E: Exception do
+    begin
+      Log.Lines.Add(E.Message);
+      CloseComPort
+    end;
+  end;
+end;
+
+procedure TfrmPK_MOC4.btn01OnClick(Sender: TObject);
+var
+  Abytes: TBytes;
+begin
+  try
+    Build_Send_Command(Abytes, LCA_CODE, 255, LED_ON);
+    ComPort1.Write(Abytes[0], Length(Abytes));
+  except
+    on E: Exception do
+    begin
+      Log.Lines.Add(E.Message);
+      CloseComPort
+    end;
+  end;
+end;
+
+procedure TfrmPK_MOC4.ToggleComConnection;
+begin
+  if not isComPortConnected then
+    OpenComPort(edtCOMPort.Text)
+  else
+    CloseComPort;
+end;
+
+function TfrmPK_MOC4.OpenComPort(APort: string): Boolean;
+begin
+  if not isComPortConnected then
+    try
+      ComPort1.Port := APort;
+      ComPort1.Open;
+
+      isComPortConnected := True;
+      btnConnect.Caption := 'Close';
+      Log.Lines.Add('Serial connected');
+    except
+      on E: Exception do
+        Log.Lines.Add(E.Message)
+    end;
+end;
+
+function TfrmPK_MOC4.CloseComPort: Boolean;
+begin
+  if isComPortConnected then
+    try
+      isComPortConnected := False;
+      btnConnect.Caption := 'Open';
+      Log.Lines.Add('Serial disconnected');
+
+      ComPort1.Close;
+    except
+      on E: Exception do
+        Log.Lines.Add(E.Message)
+    end;
+end;
+
+procedure TfrmPK_MOC4.UpdateLEDDisplay;
+var
+  i: Integer;
+begin
+  for i := 0 to NumberOfButton - 1 do
+    SetLEDDisplay(i, LEDStateArray[i]);
+end;
+
+procedure TfrmPK_MOC4.ComPort1RxChar(Sender: TObject; Count: Integer);
+begin
+  ComPort1.Read(ReceivedBuffer[0], Count);
+  Packetizer.DataReceived(ReceivedBuffer, Count);
+end;
+
+procedure TfrmPK_MOC4.DecodeArray(Input: Cardinal; var arr: TLEDStateArray;
+  Len: byte);
+var
+  i: Integer;
+begin
+  for i := 0 to Len - 1 do
+    if Input and (1 shl i) = 0 then
+      arr[i] := False
+    else
+      arr[i] := True
+end;
+
+procedure TfrmPK_MOC4.TimerTimer(Sender: TObject);
+begin
+  TTimer(Sender).Enabled := False;
+  ButtonArray[TTimer(Sender).Tag].Brush.Color := clGray;
+end;
+
+procedure TfrmPK_MOC4.TmrGetMessageTimer(Sender: TObject);
+var
+  Packet: TBytes;
+  Code: byte;
+  Number: byte;
+  State0, State1, State2, State3: byte;
+  State: Cardinal;
+begin
+  TmrGetMessage.Enabled := False;
+
+  if MessageQueue.Count > 0 then
+  begin
+    Packet := MessageQueue.Dequeue;
+
+    Code := Packet[0];
+    Number := Packet[1];
+    State3 := Packet[2];
+    State2 := Packet[3];
+    State1 := Packet[4];
+    State0 := Packet[5];
+
+    State:= EncodeByte(State0, State1, State2, State3);
+
+    Log.Lines.Add('Code: ' + Code.ToString + ', No.: ' + Number.ToString +
+      ', State: ' + State.ToString);
+
+    if Code = LSN_CODE then
+      SetLEDState(Number, State)
+    else if Code = BSN_CODE then
+      SetButtonState(Number, State)
+    else if Code = LSA_CODE then
+    begin
+      if Number = 255 then
+      begin
+        DecodeArray(State, LEDStateArray, NumberOfButton);
+        UpdateLEDDisplay;
+      end;
+    end;
+
+  end;
+
+  TmrGetMessage.Enabled := True;
+end;
+
+procedure TfrmPK_MOC4.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  ToggleComConnection;
+end;
+
+procedure TfrmPK_MOC4.FormCreate(Sender: TObject);
+begin
+
+  MapVisual;
+  InitVisual;
+
+  isComPortConnected := False;
+
+  Packetizer := TBinaryPacketizer.Create(2048);
+  Packetizer.OnPacketReceived := OnPacketReceivedHandler;
+  MessageQueue := TQueue<TBytes>.Create;
+  SetLength(ReceivedBuffer, BufferSize);
+
+  TmrGetMessage.Interval := 30;
+  TmrGetMessage.Enabled := True;
+
+  edtCOMPort.Text := 'COM3';
+  ComPort1.Port := edtCOMPort.Text;
+  ComPort1.BaudRate := br115200;
+  ComPort1.DataBits := dbEight;
+  ComPort1.StopBits := sbOneStopBit;
+  ComPort1.Parity.Bits := prNone;
+  ComPort1.FlowControl.FlowControl := fcNone;
+end;
+
+procedure TfrmPK_MOC4.FormDestroy(Sender: TObject);
+begin
+  ReceivedBuffer := nil;
+  FreeAndNil(MessageQueue);
+  FreeAndNil(Packetizer);
+end;
+
+procedure TfrmPK_MOC4.InitVisual;
+var
+  i: Integer;
+begin
+  for i := 0 to NumberOfButton - 1 do
+  begin
+    SetLEDState(i, LED_OFF);
+    SetButtonState(i, BUTTON_NOT_PRESSED);
+    if (LEDArray[i]<>nil) then
+      LEDArray[i].OnMouseUp := shapeLedMouseUp;
+  end;
+end;
+
+procedure TfrmPK_MOC4.MapVisual;
+var
+  i: Integer;
+begin
+  for i := 0 to NumberOfButton-1 do
+  begin
+    LEDArray[i]:= nil;
+    ButtonArray[i]:= nil;
+    TimerArray[i]:= nil;
+  end;
+
+  shapeLed01.Tag := 8;
+  shapeLed02.Tag := 9;
+  shapeLed03.Tag := 10;
+  shapeLed04.Tag := 11;
+  shapeLed05.Tag := 12;
+  shapeLed06.Tag := 13;
+  shapeLed07.Tag := 14;
+  shapeLed08.Tag := 15;
+
+  LEDArray[8] := shapeLed01;
+  LEDArray[9] := shapeLed02;
+  LEDArray[10] := shapeLed03;
+  LEDArray[11] := shapeLed04;
+  LEDArray[12] := shapeLed05;
+  LEDArray[13] := shapeLed06;
+  LEDArray[14] := shapeLed07;
+  LEDArray[15] := shapeLed08;
+
+  ButtonArray[8] := ShapeButton01;
+  ButtonArray[9] := ShapeButton02;
+  ButtonArray[10] := ShapeButton03;
+  ButtonArray[11] := ShapeButton04;
+  ButtonArray[12] := ShapeButton05;
+  ButtonArray[13] := ShapeButton06;
+  ButtonArray[14] := ShapeButton07;
+  ButtonArray[15] := ShapeButton08;
+
+  TimerArray[8] := Timer1;
+  TimerArray[9] := nil;
+  TimerArray[10] := nil;
+  TimerArray[11] := Timer4;
+  TimerArray[12] := Timer5;
+  TimerArray[13] := Timer6;
+  TimerArray[14] := Timer7;
+  TimerArray[15] := Timer8;
+
+  Timer1.OnTimer := TimerTimer;
+  //Timer2.OnTimer := nil;
+  //Timer3.OnTimer := nil;
+  Timer4.OnTimer := TimerTimer;
+  Timer5.OnTimer := TimerTimer;
+  Timer6.OnTimer := TimerTimer;
+  Timer7.OnTimer := TimerTimer;
+  Timer8.OnTimer := TimerTimer;
+end;
+
+procedure TfrmPK_MOC4.OnPacketReceivedHandler(Packet: TBytes);
+begin
+  MessageQueue.Enqueue(Packet);
+end;
+
+procedure TfrmPK_MOC4.SetButtonState(Number, State: byte);
+begin
+  if ButtonArray[Number]=nil then
+    Exit;
+
+  if State = ON_BUTTON_DOWN then
+    ButtonArray[Number].Brush.Color := clRed
+  else if State = ON_BUTTON_UP then
+    ButtonArray[Number].Brush.Color := clGray;
+
+  if Number = 8+1 then
+  else if Number = 8+2 then
+  else
+  begin
+    TimerArray[Number].Tag := Number;
+    TimerArray[Number].Interval := 100;
+    TimerArray[Number].Enabled := True;
+  end;
+end;
+
+procedure TfrmPK_MOC4.SetLEDState(Number: Byte; State: Cardinal);
+begin
+  if LEDArray[Number]=nil then
+    Exit;
+
+  if Byte(State) = LED_OFF then
+  begin
+    LEDArray[Number].Brush.Color := clGray;
+    LEDStateArray[Number] := False;
+  end
+  else if Byte(State) = LED_ON then
+  begin
+    LEDArray[Number].Brush.Color := clRed;
+    LEDStateArray[Number] := True;
+  end
+end;
+
+procedure TfrmPK_MOC4.SetLEDDisplay(Number: byte; State: Boolean);
+begin
+  if LEDArray[Number]=nil then
+    Exit;
+
+  if State then
+    LEDArray[Number].Brush.Color := clRed
+  else
+    LEDArray[Number].Brush.Color := clGray
+end;
+
+procedure TfrmPK_MOC4.shapeLedMouseUp(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  Abytes: TBytes;
+  Idx: Integer;
+  State: byte;
+begin
+  Idx := TShape(Sender).Tag;
+  try
+    if LEDStateArray[Idx] then
+      State := LED_OFF
+    else
+      State := LED_ON;
+    Build_Send_Command(Abytes, LCN_CODE, Idx, State);
+    ComPort1.Write(Abytes[0], Length(Abytes));
+  except
+    on E: Exception do
+    begin
+      Log.Lines.Add(E.Message);
+      CloseComPort;
+    end;
+  end;
+end;
+
+end.
