@@ -1,0 +1,16 @@
+﻿program TCMSSensor;
+
+uses
+  Vcl.Forms,
+  PK_MOC4 in 'PK_MOC4.pas' {frmLights},
+  UBinaryPacketizer in 'UBinaryPacketizer.pas';
+
+{$R *.res}
+
+begin
+  ReportMemoryLeaksOnShutdown:= True;
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TfrmLights, frmLights);
+  Application.Run;
+end.
