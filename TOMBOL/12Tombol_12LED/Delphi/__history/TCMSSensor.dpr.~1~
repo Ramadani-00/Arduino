@@ -1,0 +1,14 @@
+program TCMSSensor;
+
+uses
+  Vcl.Forms,
+  Lights in 'Lights.pas' {frmLights};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TfrmLights, frmLights);
+  Application.Run;
+end.
