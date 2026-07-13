@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899-12-30 00:00:00.000.359,D:\[ ANWAR ]\TCMS PK\TCMS Sensor Lights Binary\Lights.pas=D:\[ ANWAR ]\TCMS PK\TCMS Sensor Lights Binary\PK_MOC4.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.738,D:\[ ANWAR ]\PROJECT TCMS\TCMS SIGMA\TCMS SIGMA Tester 4 Led\TCMS_SIGMA.pas=D:\[ ANWAR ]\PROJECT TCMS\TCMS SIGMA\TCMS SIGMA Tester 4 Led\PK_MOC4.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.738,D:\[ ANWAR ]\PROJECT TCMS\TCMS SIGMA\TCMS SIGMA Tester 4 Led\TCMS_SIGMA.dfm=D:\[ ANWAR ]\PROJECT TCMS\TCMS SIGMA\TCMS SIGMA Tester 4 Led\PK_MOC4.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.926,=D:\[ ANWAR ]\TCMS PK\TCMS Sensor Lights Binary\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.003,D:\TCMS Sensor Lights\Lights.pas=D:\TCMS Sensor Lights\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.362,D:\TCMS Sensor Lights\Unit1.pas=C:\Users\3D_5\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.768,D:\[ ANWAR ]\TCMS PK\TCMS Sensor Lights Binary\UBinaryPacketizer.pas=D:\[ ANWAR ]\TCMS PK\TCMS Sensor Lights Binary\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.359,D:\[ ANWAR ]\TCMS PK\TCMS Sensor Lights Binary\Lights.dfm=D:\[ ANWAR ]\TCMS PK\TCMS Sensor Lights Binary\PK_MOC4.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.362,D:\TCMS Sensor Lights\Unit1.dfm=C:\Users\3D_5\Documents\Embarcadero\Studio\Projects\Unit1.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.829,=C:\Users\3D_5\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.365,D:\TCMS Sensor Lights\TCMSSensor.dproj=C:\Users\3D_5\Documents\Embarcadero\Studio\Projects\Project1.dproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.003,D:\TCMS Sensor Lights\Lights.dfm=D:\TCMS Sensor Lights\Unit1.dfm</Transaction>
+  </Transactions>
+</BorlandProject>
