@@ -1,0 +1,99 @@
+unit UBinaryPacketizer;
+
+interface
+
+uses
+  System.SysUtils;
+
+const
+  StartMarker: Byte = $3C; // '<'
+  EndMarker: Byte = $3E; // '>'
+
+type
+  TOnPacketReceived = procedure(Packet: TBytes) of object;
+
+  TBinaryPacketizer = class
+  strict private
+    FBufferSize: Integer;
+    FReceivedBuffer: TBytes;
+    FReceivedIndex: Integer;
+    FreceivedText: String;
+    FRecvInProgress: Boolean;
+    FOnPacketReceived: TOnPacketReceived;
+  public
+    constructor Create(BufferSize: Integer);
+    destructor Destroy; override;
+
+    procedure WrapData(Source: TBytes; var Dest: TBytes);
+    procedure DataReceived(Buffer: TBytes; Count: Integer);
+    property OnPacketReceived: TOnPacketReceived read FOnPacketReceived write FOnPacketReceived;
+  end;
+
+implementation
+
+{ TBinaryPacketizer }
+
+constructor TBinaryPacketizer.Create(BufferSize: Integer);
+begin
+  FBufferSize := BufferSize;
+  SetLength(FReceivedBuffer, FBufferSize);
+  FRecvInProgress := False;
+  FReceivedIndex := 0;
+  FOnPacketReceived:= nil;
+end;
+
+procedure TBinaryPacketizer.DataReceived(Buffer: TBytes; Count: Integer);
+var
+  i: Integer;
+  rc: Byte;
+  ABytes: TBytes;
+begin
+  for i := 0 to Count - 1 do
+  begin
+    rc := Buffer[i];
+    if FRecvInProgress then
+    begin
+      if rc = EndMarker then
+      begin
+        FRecvInProgress := False;
+        SetLength(ABytes, FReceivedIndex);
+        System.Move(FReceivedBuffer[0], ABytes[0], FReceivedIndex);
+        FReceivedIndex := 0;
+        if Assigned(FOnPacketReceived) then
+          FOnPacketReceived(ABytes);
+        ABytes:= nil;
+      end
+      else
+      begin
+        FReceivedBuffer[FReceivedIndex] := rc;
+        FReceivedIndex := FReceivedIndex + 1;
+        if (FReceivedIndex >= FBufferSize) then
+          FReceivedIndex := FBufferSize - 1;
+      end
+    end
+    else if rc = StartMarker then
+    begin
+      FRecvInProgress := True;
+      System.FillChar(FReceivedBuffer[0], FBufferSize, 0);
+    end;
+  end;
+end;
+
+destructor TBinaryPacketizer.Destroy;
+begin
+  FReceivedBuffer := nil;
+  inherited;
+end;
+
+procedure TBinaryPacketizer.WrapData(Source: TBytes; var Dest: TBytes);
+var
+  slen: Integer;
+begin
+  slen:= Length(Source);
+  SetLength(Dest, slen+2);
+  Dest[0]:= StartMarker;
+  System.Move(Source[0], Dest[1], slen);
+  Dest[Length(Dest)-1]:= EndMarker;
+end;
+
+end.

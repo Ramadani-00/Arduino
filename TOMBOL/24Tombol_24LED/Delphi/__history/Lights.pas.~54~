@@ -1,0 +1,366 @@
+unit Lights;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
+  System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, CPort, Vcl.StdCtrls, Vcl.ExtCtrls,
+  System.Generics.Collections,
+
+  UBinaryPacketizer;
+
+const
+  BufferSize = 256;
+  LC_CODE: byte = 200;
+  LS_CODE: byte = 201;
+  BS_CODE: byte = 202;
+
+type
+  TfrmLights = class(TForm)
+    btnConnect: TButton;
+    Log: TMemo;
+    btno01Off: TButton;
+    ComPort1: TComPort;
+    btn01On: TButton;
+    btn02On: TButton;
+    btn02Off: TButton;
+    Panel1: TPanel;
+    GroupBox1: TGroupBox;
+    GroupBox2: TGroupBox;
+    GroupBox3: TGroupBox;
+    btn03On: TButton;
+    btn03Off: TButton;
+    btn04Off: TButton;
+    btn04On: TButton;
+    GroupBox4: TGroupBox;
+    GroupBox5: TGroupBox;
+    btn05On: TButton;
+    btn05Off: TButton;
+    GroupBox6: TGroupBox;
+    btn06on: TButton;
+    btn06Off: TButton;
+    GroupBox7: TGroupBox;
+    btn07On: TButton;
+    btn07Off: TButton;
+    GroupBox8: TGroupBox;
+    btn08On: TButton;
+    btn08Off: TButton;
+    GroupBox9: TGroupBox;
+    TmrGetMessage: TTimer;
+    procedure btnConnectClick(Sender: TObject);
+    procedure btno01OffClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure btn01OnClick(Sender: TObject);
+    procedure ComPort1RxChar(Sender: TObject; Count: Integer);
+    procedure btn02OnClick(Sender: TObject);
+    procedure btn02OffClick(Sender: TObject);
+    procedure btn03OnClick(Sender: TObject);
+    procedure btn03OffClick(Sender: TObject);
+    procedure btn04OnClick(Sender: TObject);
+    procedure btn04OffClick(Sender: TObject);
+    procedure btn05OnClick(Sender: TObject);
+    procedure btn05OffClick(Sender: TObject);
+    procedure btn06onClick(Sender: TObject);
+    procedure btn06OffClick(Sender: TObject);
+    procedure btn07OnClick(Sender: TObject);
+    procedure btn07OffClick(Sender: TObject);
+    procedure btn08OnClick(Sender: TObject);
+    procedure btn08OffClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure TmrGetMessageTimer(Sender: TObject);
+
+  private
+
+    { Private declarations }
+    Packetizer: TBinaryPacketizer;
+
+    MessageQueue: TQueue<string>;
+
+    ReceivedBuffer: TBytes;
+//    receivedText: String;
+//    RecvInProgress: Boolean;
+
+//    function ReceiveWithStartEndMarkers(Buffer: TBytes; Count: Integer): Boolean;
+    procedure Build_Send_Command(var Buff: TBytes; Code: byte; Number: byte; State: byte);
+    procedure OnPacketReceivedHandler(Packet: TBytes);
+  public
+    { Public declarations }
+  end;
+
+var
+  frmLights: TfrmLights;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfrmLights.Build_Send_Command(var Buff: TBytes; Code: byte; Number: byte; State: byte);
+begin
+  SetLength(Buff, 5);
+  Buff[0]:= StartMarker;
+  Buff[1]:= Code;
+  Buff[2]:= Number;
+  Buff[3]:= State;
+  Buff[4]:= EndMarker;
+end;
+
+procedure TfrmLights.btn02OffClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 2, 0);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn02OnClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 2, 1);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn03OffClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 3, 0);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn03OnClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 3, 1);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn04OffClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 4, 0);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+
+  //  ComPort1.WriteStr('<LC40>');
+end;
+
+procedure TfrmLights.btn04OnClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 4, 1);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn05OffClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 5, 0);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn05OnClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 5, 1);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn06OffClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 6, 0);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn06onClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 6, 1);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn07OffClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 7, 0);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn07OnClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 7, 1);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn08OffClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 8, 0);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn08OnClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 8, 1);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btnConnectClick(Sender: TObject);
+begin
+   comport1.Open;
+   log.Lines.Add('comport Connected');
+end;
+
+procedure TfrmLights.btno01OffClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+  Build_Send_Command(ABytes, LC_CODE, 1, 0);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+procedure TfrmLights.btn01OnClick(Sender: TObject);
+var
+  ABytes: TBytes;
+begin
+//  ABytes:= TEncoding.ASCII.GetBytes('LED_01_ONx');
+//  ComPort1.Write(ABytes[0], Length(Abytes));
+//  ComPort1.WriteStr('<LC11>'); // <L11>
+  Build_Send_Command(ABytes, LC_CODE, 1, 1);
+  ComPort1.Write(ABytes[0], Length(Abytes));
+end;
+
+
+procedure TfrmLights.ComPort1RxChar(Sender: TObject; Count: Integer);
+//var
+// Str :String;
+//  i: Integer;
+//  ch: AnsiChar;
+
+//var
+//  i: Integer;
+
+begin
+//  for i := 1 to Count do
+//  begin
+//    ComPort1.Read(ch, 1);
+//    if ch = '<' then
+//      receivedText := ''
+//    else if ch = '>' then
+//    begin
+//      Log.Lines.Add(receivedText);
+//      receivedText := '';
+//    end
+//    else
+//      receivedText := receivedText + ch;
+//  end;
+
+//  ComPort1.ReadStr(Str, Count);
+//  Log.Lines.Add(Str);
+
+//  ComPort1.Read(ReceivedBuffer[0], Count);
+//  if ReceiveWithStartEndMarkers(ReceivedBuffer, Count) then
+//  begin
+//    MessageQueue.Enqueue(receivedText);
+//  end;
+
+//  FillChar(ReceivedBuffer[0], Length(ReceivedBuffer), #0);
+//  ComPort1.Read(ReceivedBuffer[0], Count);
+//  for i := 0 to Count-1 do
+//    Log.Lines.Add(ReceivedBuffer[i].ToString);
+  ComPort1.Read(ReceivedBuffer[0], Count);
+
+end;
+
+//function TfrmLights.ReceiveWithStartEndMarkers(Buffer: TBytes; Count: Integer): Boolean;
+//var
+//  i: Integer;
+//  rc: Byte;
+//begin
+//  Result:= False;
+//  for i := 0 to Count-1 do
+//  begin
+//    rc:= Buffer[i];
+//    if RecvInProgress then
+//    begin
+//      if rc=EndMarker then
+//      begin
+//        RecvInProgress:= False;
+//        Result:= True;
+//      end
+//      else
+//        receivedText:= receivedText + Char(rc);
+//    end
+//    else
+//    if rc=StartMarker then
+//    begin
+//      RecvInProgress:= True;
+//      receivedText:= '';
+//    end;
+//  end;
+//end;
+
+procedure TfrmLights.TmrGetMessageTimer(Sender: TObject);
+var
+  cmd: string;
+begin
+  TmrGetMessage.Enabled:= False;
+
+  if MessageQueue.Count>0 then
+  begin
+    cmd:= MessageQueue.Dequeue;
+
+    Log.Lines.Add(cmd);
+
+  end;
+
+  TmrGetMessage.Enabled:= True;
+end;
+
+procedure TfrmLights.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  ComPort1.Close;
+//  SetLength(ReceivedBuffer, 0);
+end;
+
+procedure TfrmLights.FormCreate(Sender: TObject);
+begin
+  Packetizer:= TBinaryPacketizer.Create(2048);
+  Packetizer.OnPacketReceived:= OnPacketReceivedHandler;
+  MessageQueue:= TQueue<string>.Create;
+  SetLength(ReceivedBuffer, BufferSize);
+//  receivedText:= '';
+//  RecvInProgress:= False;
+
+  TmrGetMessage.Interval:= 30;
+  TmrGetMessage.Enabled:= True;
+end;
+
+procedure TfrmLights.FormDestroy(Sender: TObject);
+begin
+  ReceivedBuffer:= nil;
+  FreeAndNil(MessageQueue);
+  FreeAndNil(Packetizer);
+end;
+
+procedure TfrmLights.OnPacketReceivedHandler(Packet: TBytes);
+begin
+//
+end;
+
+end.
